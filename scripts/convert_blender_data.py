@@ -21,17 +21,20 @@ def load_renderings(data_dir, split):
         meta = json.load(fp)
     images = []
     cams = []
+    times = []
     print('Loading imgs')
     for frame in meta['frames']:
         fname = os.path.join(data_dir, frame['file_path'] + '.png')
         with open(fname, 'rb') as imgin:
             image = np.array(Image.open(imgin), dtype=np.float32) / 255.0
         cams.append(frame['transform_matrix'])
+        times.append(frame['time'])
         images.append(image)
     ret = {}
     ret['images'] = np.stack(images, axis=0)
     print('Loaded all images, shape is', ret['images'].shape)
     ret['camtoworlds'] = np.stack(cams, axis=0)
+    ret['times'] = np.stack(times, axis=0)
     w = ret['images'].shape[2]
     camera_angle_x = float(meta['camera_angle_x'])
     ret['focal'] = 0.5 * w / np.tan(0.5 * camera_angle_x)
@@ -65,6 +68,7 @@ def convert_to_nerfdata(basedir, newdir, n_down):
         cam2worlds = []
         lossmults = []
         labels = []
+        times = []
         nears, fars = [], []
         f = data['focal']
         print('Saving images')
@@ -82,6 +86,7 @@ def convert_to_nerfdata(basedir, newdir, n_down):
                 cam2worlds.append(data['camtoworlds'][i].tolist())
                 lossmults.append(4.0**j)
                 labels.append(j)
+                times.append(data['times'][i])
                 nears.append(2.0)
                 fars.append(6.0)
                 img = down2(img)
@@ -94,6 +99,7 @@ def convert_to_nerfdata(basedir, newdir, n_down):
         meta['height'] = heights
         meta['focal'] = focals
         meta['label'] = labels
+        meta['time'] = times
         meta['near'] = nears
         meta['far'] = fars
         meta['lossmult'] = lossmults

@@ -46,12 +46,15 @@ def main(
         pin_memory_device='cuda',
     )
 
+    train_time_cnt = sum([len(v) for k, v in train_dataset.times.items()])
+    test_time_cnt = sum([len(v) for k, v in test_dataset.times.items()])
+
     logger.info("==> Init model ...")
     model = get_model(model_name=model_name)(aabb=train_dataset.aabb)
     logger.info(model)
 
     logger.info("==> Init trainer ...")
-    trainer = Trainer(model, train_loader, eval_loader=test_loader)
+    trainer = Trainer(model, train_loader, eval_loader=test_loader, train_time_cnt=train_time_cnt, test_time_cnt=test_time_cnt)
     if "train" in stages:
         trainer.fit()
     if "eval" in stages:

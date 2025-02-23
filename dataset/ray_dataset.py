@@ -65,6 +65,10 @@ class RayDataset(Dataset):
             self.frames[k] = torch.stack(frames, dim=0)
         self.frame_number = {k: x.shape[0] for k, x in self.frames.items()}
         self.aabb = torch.tensor(np.asarray(data_source['aabb'])).float()
+        self.times = {
+            k: torch.tensor([x for x in v])
+            for k, v in data_source['times'].items()
+        }
         self.loss_multi = {
             k: torch.tensor([x['lossmult'] for x in v])
             for k, v in data_source['frames'].items()
@@ -92,18 +96,19 @@ class RayDataset(Dataset):
     @torch.no_grad()
     def __getitem__(self, index):
         if self.training:
-            rgb, c2w, cam_rays, loss_multi = [], [], [], []
+            rgb, c2w, cam_rays, loss_multi, times = [], [], [], [], []
             for cam_idx in range(len(self.cameras)):
                 num_rays = int(
                     self.num_rays
                     * (1.0 / self.loss_multi[cam_idx][0])
                     / sum([1.0 / v[0] for _, v in self.loss_multi.items()])
                 )
-                idx = torch.randint(
-                    0,
-                    self.frames[cam_idx].shape[0],
-                    size=(num_rays,),
-                )
+                idx = torch.ones(size=(num_rays,), dtype=torch.int64) * index
+#                idx = torch.randint(
+#                    0,
+#                    self.frames[cam_idx].shape[0],
+#                    size=(num_rays,),
+#                )
                 sample_x = torch.randint(
                     0,
                     self.cameras[cam_idx].width,
@@ -118,10 +123,12 @@ class RayDataset(Dataset):
                 c2w.append(self.poses[cam_idx][idx])
                 cam_rays.append(self.ray_bundles[cam_idx][sample_y, sample_x])
                 loss_multi.append(self.loss_multi[cam_idx][idx, None])
+                times.append(self.times[cam_idx][idx, None])
             rgb = torch.cat(rgb, dim=0)
             c2w = torch.cat(c2w, dim=0)
             cam_rays = RayBundle.direct_cat(cam_rays, dim=0)
             loss_multi = torch.cat(loss_multi, dim=0)
+            times = torch.cat(times, dim=0)
             if 'white' == self.render_bkgd:
                 render_bkgd = torch.ones_like(rgb[..., [-1]])
             elif 'rand' == self.render_bkgd:
@@ -152,6 +159,7 @@ class RayDataset(Dataset):
             c2w = self.poses[cam_idx][idx]
             cam_rays = self.ray_bundles[cam_idx][sample_y, sample_x]
             loss_multi = self.loss_multi[cam_idx][idx, None]
+            times = self.times[cam_idx][idx, None]
             render_bkgd = torch.ones_like(rgb[..., [-1]])
 
         if self.to_world:
@@ -177,6 +185,7 @@ class RayDataset(Dataset):
             # 'c2w': c2w,
             'cam_rays': cam_rays,
             'target': target,
+            'times': times,
             # 'idx': idx,
         }
         if not self.training:
@@ -200,10 +209,10 @@ def ray_collate(batch):
 if __name__ == '__main__':
     training_dataset = RayDataset(
         # '/mnt/bn/wbhu-nerf/Dataset/nerf_synthetic',
-        '/mnt/bn/wbhu-nerf/Dataset/nerf_synthetic_multiscale',
+        '~/My_directory/CL-Tri-MipRF/data',
         'lego',
-        # 'nerf_synthetic',
-        'nerf_synthetic_multiscale',
+        'nerf_synthetic',
+        # 'nerf_synthetic_multiscale',
     )
     train_loader = iter(
         DataLoader(

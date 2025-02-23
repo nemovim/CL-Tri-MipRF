@@ -38,10 +38,9 @@ def load_data(base_path: Path, scene: str, split: str):
     ]
     cam_num = len(cameras)
 
-    frames, poses = {k: [] for k in range(len(cameras))}, {
-        k: [] for k in range(len(cameras))
-    }
+    frames, poses, times = {k: [] for k in range(len(cameras))}, {k: [] for k in range(len(cameras))}, {k: [] for k in range(len(cameras))}
     index = 0
+
     for frame in meta["frames"]:
         fname = data_path / Path(frame["file_path"].replace("./", "") + ".png")
         frames[index % cam_num].append(
@@ -50,6 +49,7 @@ def load_data(base_path: Path, scene: str, split: str):
                 'lossmult': 1.0,
             }
         )
+        times[index % cam_num].append(frame['time'])
         poses[index % cam_num].append(
             np.array(frame["transform_matrix"]).astype(np.float32)
         )
@@ -60,7 +60,12 @@ def load_data(base_path: Path, scene: str, split: str):
     outputs = {
         'frames': frames,
         'poses': poses,
+        'times': times,
         'cameras': cameras,
         'aabb': aabb,
     }
     return outputs
+
+if __name__ == '__main__':
+    pass
+

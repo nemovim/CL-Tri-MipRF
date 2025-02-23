@@ -165,11 +165,13 @@ cython_debug/
 # Experiments and outputs
 runs/
 outputs/
+logs/
 # tensorboard log files
 events.out.*
 
 # Data
 data
+data_ms
 !*/data
 
 # Misc

@@ -22,6 +22,8 @@ class Trainer:
         model: RFModel,
         train_loader: DataLoader,
         eval_loader: DataLoader,
+        train_time_cnt: int,
+        test_time_cnt: int,
         # configurable
         base_exp_dir: str = 'experiments',
         exp_name: str = 'Tri-MipRF',
@@ -37,6 +39,9 @@ class Trainer:
         self.model = model.cuda()
         self.train_loader = train_loader
         self.eval_loader = eval_loader
+
+        self.train_time_cnt = train_time_cnt
+        self.test_time_cnt = test_time_cnt
 
         self.max_steps = max_steps
         self.target_sample_batch_size = target_sample_batch_size
@@ -63,8 +68,10 @@ class Trainer:
     def train_iter(self, step: int, data: Dict, logging=False):
         tic = time.time()
         cam_rays = data['cam_rays']
+        times = data['times']
         num_rays = min(self.num_rays, len(cam_rays))
         cam_rays = cam_rays[:num_rays].cuda(non_blocking=True)
+        times = times[:num_rays].cuda(non_blocking=True)
         target = data['target'][:num_rays].cuda(non_blocking=True)
 
         rb = self.model(cam_rays, target.render_bkgd)
@@ -111,12 +118,15 @@ class Trainer:
         self.model.train()
         for step in range(self.max_steps):
             self.model.before_iter(step)
+            index = int(step/self.max_steps*self.train_time_cnt)
+            print(f'index: {index}')
             metrics = self.train_iter(
                 step,
-                data=next(iter_train_loader),
+                data=next(iter_train_loader, index),
                 logging=(step % self.log_step == 0 and step > 0)
                 or (step == 100),
             )
+            raise Exception()
             if 0 == metrics.get("rendering_samples_actual", -1):
                 continue
 
