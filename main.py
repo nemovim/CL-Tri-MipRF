@@ -3,6 +3,7 @@ from datetime import datetime
 import gin
 from loguru import logger
 from torch.utils.data import DataLoader
+from torch import autograd
 
 from utils.common import set_random_seed
 from dataset.ray_dataset import RayDataset, ray_collate
@@ -18,12 +19,15 @@ def main(
     stages: str = "train_eval",
     batch_size: int = 16,
     model_name="Tri-MipRF",
+    max_steps=1000,
 ):
+
+    # autograd.set_detect_anomaly(True)
     stages = list(stages.split("_"))
     set_random_seed(seed)
 
     logger.info("==> Init dataloader ...")
-    train_dataset = RayDataset(split=train_split)
+    train_dataset = RayDataset(split=train_split, max_steps=max_steps*batch_size)
     train_loader = DataLoader(
         train_dataset,
         batch_size=batch_size,
@@ -48,13 +52,14 @@ def main(
 
     train_time_cnt = sum([len(v) for k, v in train_dataset.times.items()])
     test_time_cnt = sum([len(v) for k, v in test_dataset.times.items()])
+    print(train_time_cnt, test_time_cnt)
 
     logger.info("==> Init model ...")
     model = get_model(model_name=model_name)(aabb=train_dataset.aabb)
     logger.info(model)
 
     logger.info("==> Init trainer ...")
-    trainer = Trainer(model, train_loader, eval_loader=test_loader, train_time_cnt=train_time_cnt, test_time_cnt=test_time_cnt)
+    trainer = Trainer(model, train_loader, eval_loader=test_loader, train_time_cnt=train_time_cnt)
     if "train" in stages:
         trainer.fit()
     if "eval" in stages:

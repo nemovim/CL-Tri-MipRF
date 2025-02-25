@@ -37,6 +37,24 @@ class TriMipRF(nn.Module):
                 "degree": 4,
             },
         )
+        self.time_encoding = tcnn.Encoding(
+            n_input_dims=1,
+            encoding_config={
+                "otype": "Frequency",
+                "n_frequencies": 10, 
+            },
+        )
+        self.mlp_delta = tcnn.Network(
+            n_input_dims=self.encoding.dim_out+self.time_encoding.n_output_dims,
+            n_output_dims=3,
+            network_config={
+                "otype": "FullyFusedMLP",
+                "activation": "ReLU",
+                "output_activation": "None",
+                "n_neurons": net_width,
+                "n_hidden_layers": 4,
+            },
+        )
         self.mlp_base = tcnn.Network(
             n_input_dims=self.encoding.dim_out,
             n_output_dims=geo_feat_dim + 1,
@@ -99,3 +117,26 @@ class TriMipRF(nn.Module):
             .to(embedding)
         )
         return {"rgb": rgb}
+
+    def query_delta(self, x, level_vol, t):
+        if t.shape[0] != 0 and t[0] == 0:
+            delta = x*0
+            print('Delta!!!:',delta)
+        else:
+            level = (
+                level_vol if level_vol is None else level_vol + self.log2_plane_size
+            )
+            with torch.no_grad():
+                enc_x = self.encoding(
+                    x.view(-1, 3),
+                    level=level.view(-1, 1),
+                )
+            enc_t = self.time_encoding(t)
+            enc = torch.concat([enc_x, enc_t], axis=-1) 
+            delta = (
+                self.mlp_delta(enc)
+                .view(list(x.shape[:-1]) + [3])
+                .to(x)
+            )
+        delta = torch.nan_to_num(delta, nan=1e-7)
+        return {"delta": delta}

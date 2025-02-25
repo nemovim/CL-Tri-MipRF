@@ -1,7 +1,8 @@
-main.train_split = 'trainval'
+main.train_split = 'train'
 main.num_workers = 16
-main.model_name = 'Tri-MipRF'
+main.model_name = 'CL-Tri-MipRF'
 main.batch_size = 28 # this is not the actual batch_size, but the prefetch size
+main.max_steps = 5000
 
 RayDataset.base_path = 'data/'
 RayDataset.scene = 'lego'
@@ -10,9 +11,9 @@ RayDataset.scene_type = 'nerf_synthetic'
 
 Trainer.base_exp_dir = 'logs/'
 Trainer.exp_name = None
-Trainer.eval_step = 25000
+Trainer.eval_step = 5000
 Trainer.log_step = 1000
-Trainer.max_steps = 25001
+Trainer.max_steps = 5000
 Trainer.target_sample_batch_size = 262144
 
 

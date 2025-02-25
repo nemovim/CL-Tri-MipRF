@@ -28,6 +28,7 @@ class RayDataset(Dataset):
         to_world: bool = True,
         num_rays: int = 8192,
         render_bkgd: str = 'white',
+        max_steps: int = 1000,
         **kwargs
     ):
         super().__init__()
@@ -36,6 +37,8 @@ class RayDataset(Dataset):
             base_path=Path(base_path), scene=scene, split=split, **kwargs
         )
         self.training = split.find('train') >= 0
+
+        self.max_steps = max_steps
 
         self.cameras = data_source['cameras']
         self.ray_bundles = [c.build('cpu') for c in self.cameras]
@@ -98,6 +101,7 @@ class RayDataset(Dataset):
         if self.training:
             rgb, c2w, cam_rays, loss_multi, times = [], [], [], [], []
             for cam_idx in range(len(self.cameras)):
+                index = min(int(index/self.max_steps*self.frame_number[cam_idx]), self.frame_number[cam_idx]-1)
                 num_rays = int(
                     self.num_rays
                     * (1.0 / self.loss_multi[cam_idx][0])

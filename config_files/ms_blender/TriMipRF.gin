@@ -2,6 +2,7 @@ main.train_split = 'trainval'
 main.num_workers = 16
 main.model_name = 'Tri-MipRF'
 main.batch_size = 24 # this is not the actual batch_size, but the prefetch size
+main.max_steps = 25001
 
 RayDataset.base_path = 'data_ms/'
 RayDataset.scene = 'lego'

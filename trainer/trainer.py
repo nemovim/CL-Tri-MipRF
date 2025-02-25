@@ -23,7 +23,6 @@ class Trainer:
         train_loader: DataLoader,
         eval_loader: DataLoader,
         train_time_cnt: int,
-        test_time_cnt: int,
         # configurable
         base_exp_dir: str = 'experiments',
         exp_name: str = 'Tri-MipRF',
@@ -41,7 +40,6 @@ class Trainer:
         self.eval_loader = eval_loader
 
         self.train_time_cnt = train_time_cnt
-        self.test_time_cnt = test_time_cnt
 
         self.max_steps = max_steps
         self.target_sample_batch_size = target_sample_batch_size
@@ -73,11 +71,13 @@ class Trainer:
         cam_rays = cam_rays[:num_rays].cuda(non_blocking=True)
         times = times[:num_rays].cuda(non_blocking=True)
         target = data['target'][:num_rays].cuda(non_blocking=True)
+        # print(f'times: {times}')
 
-        rb = self.model(cam_rays, target.render_bkgd)
+        rb = self.model(cam_rays, times, target.render_bkgd)
 
         # compute loss
-        loss_dict = self.model.compute_loss(cam_rays, rb, target)
+        loss_dict = self.model.compute_loss(cam_rays, rb, target, 'mse')
+        print(f'loss: {loss_dict}')
         metrics = self.model.compute_metrics(cam_rays, rb, target)
         if 0 == metrics.get("rendering_samples_actual", -1):
             return metrics
@@ -113,20 +113,19 @@ class Trainer:
         logger.info("==> Start training ...")
 
         iter_train_loader = iter(self.train_loader)
+
         iter_eval_loader = iter(self.eval_loader)
         eval_0 = next(iter_eval_loader)
+
         self.model.train()
-        for step in range(self.max_steps):
-            self.model.before_iter(step)
-            index = int(step/self.max_steps*self.train_time_cnt)
-            print(f'index: {index}')
+        for step in range(1, self.max_steps+1):
+            self.model.before_iter(step, step/self.max_steps)
             metrics = self.train_iter(
                 step,
-                data=next(iter_train_loader, index),
+                data=next(iter_train_loader),
                 logging=(step % self.log_step == 0 and step > 0)
                 or (step == 100),
             )
-            raise Exception()
             if 0 == metrics.get("rendering_samples_actual", -1):
                 continue
 
