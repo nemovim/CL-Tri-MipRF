@@ -37,8 +37,9 @@ class RFModel(nn.Module):
         self.ray_sampler = None
 
     def normalize(self, x):
-        mi = x.min(1, keepdim=True)[0]-0.0001
-        ma = x.max(1, keepdim=True)[0]+0.0001
+        return self.contraction(x)
+        mi = x.min(1, keepdim=True)[0]-1e-7
+        ma = x.max(1, keepdim=True)[0]+1e-7
         return (x-mi)/(ma-mi)
         
 
@@ -46,7 +47,6 @@ class RFModel(nn.Module):
         aabb_min, aabb_max = self.aabb[:3].unsqueeze(0), self.aabb[
             3:
         ].unsqueeze(0)
-        print(f'aabb: {aabb_min} | {aabb_max}')
         x = (x - aabb_min) / (aabb_max - aabb_min)
         return x
 

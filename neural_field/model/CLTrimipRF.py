@@ -41,15 +41,12 @@ class CLTriMipRFModel(RFModel):
         # update_ray_sampler
         def a(x):
             level_vol = torch.empty_like(x[..., 0]).fill_(self.occ_level_vol)
-            times = torch.empty_like(x[..., :1]).fill_(time)
-#            print('Before_iter')
-#            print(f'pos_in_before_iter: {x}')
-#            print(f'x.shape: {x.shape}')
-#            print(f'contracted_pos_in_before_iter: {self.contraction(x)}')
-            delta = self.field.query_delta(self.contraction(x), level_vol, times)['delta']
-            adjusted_positions = self.normalize(x + delta)
+            # times = torch.empty_like(x[..., :1]).fill_(time)
+            # delta = self.field.query_delta(self.contraction(x), level_vol, times)['delta']
+            # adjusted_positions = self.normalize(x + delta)
+            adjusted_positions = self.contraction(x)
             density = self.field.query_density(adjusted_positions, level_vol)['density']
-            print(f'density: {density}')
+            # print(f'density: {density}')
             return density
             
         self.ray_sampler.every_n_step(
@@ -91,10 +88,11 @@ class CLTriMipRFModel(RFModel):
                 level_vol = torch.log2(
                     sample_ball_radii / self.feature_vol_radii
                 )  # real level should + log2(feature_resolution)
-                print(f'time_in_forward: {times[ray_indices]}')
-                delta = self.field.query_delta(positions, level_vol, times[ray_indices])['delta']
-                print(f'delta_in_forward: {delta}')
-                adjusted_positions = self.normalize(positions + delta)
+                # print(f'time_in_forward: {times[ray_indices]}')
+                # delta = self.field.query_delta(positions, level_vol, times[ray_indices])['delta']
+                # print(f'delta_in_forward: {delta}')
+                # adjusted_positions = self.normalize(positions + delta)
+                adjusted_positions = self.contraction(positions)
                 return self.field.query_density(adjusted_positions, level_vol)['density']
 
             ray_indices, t_starts, t_ends = nerfacc.ray_marching(
@@ -121,10 +119,11 @@ class CLTriMipRFModel(RFModel):
             level_vol = torch.log2(
                 sample_ball_radii / self.feature_vol_radii
             )  # real level should + log2(feature_resolution)
-            delta = self.field.query_delta(positions, level_vol, times[ray_indices])['delta']
-            print(f'positions_in_rgb_forward: {positions}')
-            print(f'delta_in_rgb_forward: {delta}')
-            adjusted_positions = self.normalize(positions + delta)
+            # delta = self.field.query_delta(positions, level_vol, times[ray_indices])['delta']
+            # print(f'positions_in_rgb_forward: {positions}')
+            # print(f'delta_in_rgb_forward: {delta}')
+            # adjusted_positions = self.normalize(positions + delta)
+            adjusted_positions = self.contraction(positions)
             res = self.field.query_density(
                 x=adjusted_positions,
                 level_vol=level_vol,
@@ -223,7 +222,7 @@ class CLTriMipRFModel(RFModel):
         params_list.append(dict(params=self.field.mlp_base.parameters(), lr=lr))
         params_list.append(dict(params=self.field.mlp_head.parameters(), lr=lr))
 
-        params_list.append(dict(params=self.field.mlp_delta.parameters(), lr=lr/10))
+        # params_list.append(dict(params=self.field.mlp_delta.parameters(), lr=lr*10))
 
         optim = torch.optim.AdamW(
             params_list,

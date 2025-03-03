@@ -76,8 +76,7 @@ class Trainer:
         rb = self.model(cam_rays, times, target.render_bkgd)
 
         # compute loss
-        loss_dict = self.model.compute_loss(cam_rays, rb, target, 'mse')
-        print(f'loss: {loss_dict}')
+        loss_dict = self.model.compute_loss(cam_rays, rb, target)
         metrics = self.model.compute_metrics(cam_rays, rb, target)
         if 0 == metrics.get("rendering_samples_actual", -1):
             return metrics
@@ -119,7 +118,9 @@ class Trainer:
 
         self.model.train()
         for step in range(1, self.max_steps+1):
-            self.model.before_iter(step, step/self.max_steps)
+            # next_data = next(iter_train_loader)
+            # self.model.before_iter(step, next_data['times'][0].item())
+            self.model.before_iter(step, 0)
             metrics = self.train_iter(
                 step,
                 data=next(iter_train_loader),
@@ -168,14 +169,22 @@ class Trainer:
     @torch.no_grad()
     def eval_img(self, data, compute_metrics=True):
         cam_rays = data['cam_rays'].cuda(non_blocking=True)
+        times = data['times'].cuda(non_blocking=True)
         target = data['target'].cuda(non_blocking=True)
 
         final_rb = None
         flatten_rays = cam_rays.reshape(-1)
         flatten_target = target.reshape(-1)
+        flatten_times = times.reshape(-1)
+
+#        print(f'cam_rays.shape: {flatten_rays.shape}')
+#        print(f'times.shape: {flatten_times.shape}')
+#        print(f'target.shape: {flatten_target.shape}')
+
         for i in range(0, len(cam_rays), self.test_chunk_size):
             rb = self.model(
                 flatten_rays[i : i + self.test_chunk_size],
+                flatten_times[i : i + self.test_chunk_size],
                 flatten_target[i : i + self.test_chunk_size].render_bkgd,
             )
             final_rb = rb if final_rb is None else final_rb.cat(rb)

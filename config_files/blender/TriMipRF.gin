@@ -11,8 +11,8 @@ RayDataset.scene_type = 'nerf_synthetic'
 
 Trainer.base_exp_dir = 'logs/'
 Trainer.exp_name = None
-Trainer.eval_step = 5000
-Trainer.log_step = 1000
+Trainer.eval_step = 500
+Trainer.log_step = 500
 Trainer.max_steps = 5000
 Trainer.target_sample_batch_size = 262144
 

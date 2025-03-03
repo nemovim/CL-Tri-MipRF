@@ -101,13 +101,16 @@ class RayDataset(Dataset):
         if self.training:
             rgb, c2w, cam_rays, loss_multi, times = [], [], [], [], []
             for cam_idx in range(len(self.cameras)):
-                index = min(int(index/self.max_steps*self.frame_number[cam_idx]), self.frame_number[cam_idx]-1)
+                max_index = min(int(index/(self.max_steps/2)*(self.frame_number[cam_idx]-9))+9, self.frame_number[cam_idx]-1)
+                now_index = torch.randint(0, max_index+1, (1,)).item()
+                # now_index = torch.randint(max_index-9, max_index+1, (1,)).item()
+                # now_index = torch.randint(0, self.frame_number[cam_idx], (1,)).item()
                 num_rays = int(
                     self.num_rays
                     * (1.0 / self.loss_multi[cam_idx][0])
                     / sum([1.0 / v[0] for _, v in self.loss_multi.items()])
                 )
-                idx = torch.ones(size=(num_rays,), dtype=torch.int64) * index
+                idx = torch.ones(size=(num_rays,), dtype=torch.int64) * now_index
 #                idx = torch.randint(
 #                    0,
 #                    self.frames[cam_idx].shape[0],
