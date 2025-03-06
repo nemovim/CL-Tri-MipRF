@@ -59,6 +59,7 @@ class TriMipRFModel(RFModel):
         self,
         rays: RayBundle,
         background_color=None,
+        times=None,
         alpha_thre=0.0,
         ray_marching_aabb=None,
     ):
@@ -80,6 +81,22 @@ class TriMipRFModel(RFModel):
                 level_vol = torch.log2(
                     sample_ball_radii / self.feature_vol_radii
                 )  # real level should + log2(feature_resolution)
+
+                delta = self.field.query_delta(positions, level_vol, times[ray_indices])['delta']
+
+                positions = self.contraction(positions+delta)
+
+#                ray_vectors = t_origins - positions
+#                distance = ray_vectors.pow(2).sum(-1, keepdim=True).sqrt()
+#                cos = 1/(distance/ray_vectors[:, 2:])
+#
+#                sample_ball_radii = self.compute_ball_radii(
+#                    distance, radiis, cos
+#                )
+#                level_vol = torch.log2(
+#                    sample_ball_radii / self.feature_vol_radii
+#                )  # real level should + log2(feature_resolution)
+
                 return self.field.query_density(positions, level_vol)['density']
 
             ray_indices, t_starts, t_ends = nerfacc.ray_marching(
@@ -106,6 +123,20 @@ class TriMipRFModel(RFModel):
             level_vol = torch.log2(
                 sample_ball_radii / self.feature_vol_radii
             )  # real level should + log2(feature_resolution)
+
+            delta = self.field.query_delta(positions, level_vol, times[ray_indices])['delta']
+            positions = self.contraction(positions+delta)
+
+#            ray_vectors = t_origins - positions
+#            distance = ray_vectors.pow(2).sum(-1, keepdim=True).sqrt()
+#            cos = 1/(distance/ray_vectors[:, 2:])
+#            sample_ball_radii = self.compute_ball_radii(
+#                distance, radiis, cos
+#            )
+#            level_vol = torch.log2(
+#                sample_ball_radii / self.feature_vol_radii
+#            )  # real level should + log2(feature_resolution)
+            
             res = self.field.query_density(
                 x=positions,
                 level_vol=level_vol,
@@ -191,15 +222,19 @@ class TriMipRFModel(RFModel):
         self, lr=2e-3, weight_decay=1e-5, feature_lr_scale=10.0, **kwargs
     ):
         params_list = []
-        params_list.append(
-            dict(
-                params=self.field.encoding.parameters(),
-                lr=lr * feature_lr_scale,
-            )
-        )
+#        params_list.append(
+#            dict(
+#                params=self.field.encoding.parameters(),
+#                lr=lr * feature_lr_scale,
+#            )
+#        )
         params_list.append(
             dict(params=self.field.direction_encoding.parameters(), lr=lr)
         )
+#        params_list.append(
+#            dict(params=self.field.pos_encoding.parameters(), lr=lr)
+#        )
+        params_list.append(dict(params=self.field.mlp_delta.parameters(), lr=lr))
         params_list.append(dict(params=self.field.mlp_base.parameters(), lr=lr))
         params_list.append(dict(params=self.field.mlp_head.parameters(), lr=lr))
 

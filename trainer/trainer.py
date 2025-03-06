@@ -66,8 +66,9 @@ class Trainer:
         num_rays = min(self.num_rays, len(cam_rays))
         cam_rays = cam_rays[:num_rays].cuda(non_blocking=True)
         target = data['target'][:num_rays].cuda(non_blocking=True)
+        times = data['times'][:num_rays].cuda(non_blocking=True)
 
-        rb = self.model(cam_rays, target.render_bkgd)
+        rb = self.model(cam_rays, target.render_bkgd, times)
 
         # compute loss
         loss_dict = self.model.compute_loss(cam_rays, rb, target)
@@ -160,14 +161,17 @@ class Trainer:
     def eval_img(self, data, compute_metrics=True):
         cam_rays = data['cam_rays'].cuda(non_blocking=True)
         target = data['target'].cuda(non_blocking=True)
+        times = data['times'].cuda(non_blocking=True)
 
         final_rb = None
         flatten_rays = cam_rays.reshape(-1)
         flatten_target = target.reshape(-1)
+        flatten_times = times.reshape(-1)
         for i in range(0, len(cam_rays), self.test_chunk_size):
             rb = self.model(
                 flatten_rays[i : i + self.test_chunk_size],
                 flatten_target[i : i + self.test_chunk_size].render_bkgd,
+                flatten_times[i : i + self.test_chunk_size]
             )
             final_rb = rb if final_rb is None else final_rb.cat(rb)
         final_rb = final_rb.reshape(cam_rays.shape)
