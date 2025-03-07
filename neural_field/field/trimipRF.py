@@ -42,8 +42,14 @@ class TriMipRF(nn.Module):
         self.pos_encoding = tcnn.Encoding(
             n_input_dims=3,
             encoding_config={
-                "otype": "Frequency",
-                "n_frequency": 20
+                "otype": "Grid",
+                "type": "Hash",
+                "n_levels": 16,
+                "n_features_per_level": 2,
+                "log2_hashmap_size": 19,
+                "base_resolution": 16,
+                "per_level_scale": 2.0,
+                "interpolation": "Linear",
             }
         )
 
@@ -160,7 +166,8 @@ class TriMipRF(nn.Module):
             )
 
         # print(delta)
-        delta *= 1e-4
+        delta *= 1e-3
+        delta *= t.view(-1, 1) > 0
         # delta = torch.nan_to_num(delta, nan=0)
         delta = delta * selector[..., None]
         

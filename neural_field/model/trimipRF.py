@@ -231,9 +231,9 @@ class TriMipRFModel(RFModel):
         params_list.append(
             dict(params=self.field.direction_encoding.parameters(), lr=lr)
         )
-#        params_list.append(
-#            dict(params=self.field.pos_encoding.parameters(), lr=lr)
-#        )
+        params_list.append(
+            dict(params=self.field.pos_encoding.parameters(), lr=lr)
+        )
         params_list.append(dict(params=self.field.mlp_delta.parameters(), lr=lr))
         params_list.append(dict(params=self.field.mlp_base.parameters(), lr=lr))
         params_list.append(dict(params=self.field.mlp_head.parameters(), lr=lr))
