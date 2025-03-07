@@ -70,7 +70,7 @@ class TriMipRF(nn.Module):
                 "activation": "ReLU",
                 "output_activation": "None",
                 "n_neurons": net_width,
-                "n_hidden_layers": 4,
+                "n_hidden_layers": 8,
             },
         )
 
@@ -166,8 +166,9 @@ class TriMipRF(nn.Module):
             )
 
         # print(delta)
-        delta *= 1e-3
         delta *= t.view(-1, 1) > 0
+        delta *= 1e-6
+        delta *= delta > 1/1000
         # delta = torch.nan_to_num(delta, nan=0)
         delta = delta * selector[..., None]
         
