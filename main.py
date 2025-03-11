@@ -57,7 +57,7 @@ def main(
     if "eval" in stages:
         if "train" not in stages:
             trainer.load_ckpt()
-        trainer.eval(save_results=True, rendering_channels=["rgb", "depth"])
+        trainer.eval(0, save_results=True, rendering_channels=["rgb", "depth"])
 
 
 if __name__ == "__main__":

@@ -137,19 +137,20 @@ class Trainer:
 
             if step > 0 and step % self.eval_step == 0:
                 self.model.eval()
-                metrics, final_rb, target = self.eval_img(
-                    next(iter_eval_loader) if self.varied_eval_img else eval_0,
-                    compute_metrics=True,
-                )
-                self.writer.write_scalar_dicts(['eval'], [metrics], step)
-                self.writer.write_image('eval/rgb', final_rb.rgb, step)
-                self.writer.write_image('gt/rgb', target.rgb, step)
-                self.writer.write_image(
-                    'eval/depth',
-                    apply_depth_colormap(final_rb.depth),
-                    step,
-                )
-                self.writer.write_image('eval/alpha', final_rb.alpha, step)
+                self.eval(step, True, ['rgb', 'depth'])
+#                metrics, final_rb, target = self.eval_img(
+#                    next(iter_eval_loader) if self.varied_eval_img else eval_0,
+#                    compute_metrics=True,
+#                )
+#                self.writer.write_scalar_dicts(['eval'], [metrics], step)
+#                self.writer.write_image('eval/rgb', final_rb.rgb, step)
+#                self.writer.write_image('gt/rgb', target.rgb, step)
+#                self.writer.write_image(
+#                    'eval/depth',
+#                    apply_depth_colormap(final_rb.depth),
+#                    step,
+#                )
+#                self.writer.write_image('eval/alpha', final_rb.alpha, step)
 
                 self.model.train()
 
@@ -179,13 +180,14 @@ class Trainer:
     @torch.no_grad()
     def eval(
         self,
+        step=0,
         save_results: bool = False,
         rendering_channels: List[str] = ["rgb"],
     ):
         # ipdb.set_trace()
         logger.info("==> Start evaluation on testset ...")
         if save_results:
-            res_dir = self.exp_dir / 'rendering'
+            res_dir = self.exp_dir / f'rendering_{step}'
             res_dir.mkdir(parents=True, exist_ok=True)
             results = {"names": []}
             results.update({k: [] for k in rendering_channels})
