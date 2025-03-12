@@ -38,13 +38,22 @@ class TriMipRFModel(RFModel):
 
     def before_iter(self, step):
         # update_ray_sampler
-        self.ray_sampler.every_n_step(
-            step=step,
-            occ_eval_fn=lambda x: self.field.query_density(
-                x=self.contraction(x),
+        def occ_eval_fn(x):
+            with torch.no_grad():
+                delta = self.field.query_delta(
+                    x=self.contraction(x),
+                    level_vol=torch.empty_like(x[..., 0]).fill_(self.occ_level_vol),
+                    t=torch.empty_like(x[..., 0]).fill_(torch.rand(1)[0]),
+                )['delta']
+            density = self.field.query_density(
+                x=self.contraction(x)+delta,
                 level_vol=torch.empty_like(x[..., 0]).fill_(self.occ_level_vol),
             )['density']
-            * self.render_step_size,
+            return density * self.render_step_size
+
+        self.ray_sampler.every_n_step(
+            step=step,
+            occ_eval_fn=occ_eval_fn,
             occ_thre=5e-3,
         )
 
@@ -84,7 +93,7 @@ class TriMipRFModel(RFModel):
 
                 delta = self.field.query_delta(positions, level_vol, times[ray_indices])['delta']
 
-                positions = self.contraction(positions+delta)
+                positions += delta
 
 #                ray_vectors = t_origins - positions
 #                distance = ray_vectors.pow(2).sum(-1, keepdim=True).sqrt()
@@ -125,7 +134,7 @@ class TriMipRFModel(RFModel):
             )  # real level should + log2(feature_resolution)
 
             delta = self.field.query_delta(positions, level_vol, times[ray_indices])['delta']
-            positions = self.contraction(positions+delta)
+            positions += delta
 
 #            ray_vectors = t_origins - positions
 #            distance = ray_vectors.pow(2).sum(-1, keepdim=True).sqrt()
@@ -222,19 +231,19 @@ class TriMipRFModel(RFModel):
         self, lr=2e-3, weight_decay=1e-5, feature_lr_scale=10.0, **kwargs
     ):
         params_list = []
-#        params_list.append(
-#            dict(
-#                params=self.field.encoding.parameters(),
-#                lr=lr * feature_lr_scale,
-#            )
-#        )
+        params_list.append(
+            dict(
+                params=self.field.encoding.parameters(),
+                lr=lr * feature_lr_scale,
+            )
+        )
         params_list.append(
             dict(params=self.field.direction_encoding.parameters(), lr=lr)
         )
-        params_list.append(
-            dict(params=self.field.pos_encoding.parameters(), lr=lr)
-        )
-        params_list.append(dict(params=self.field.mlp_delta.parameters(), lr=lr))
+#        params_list.append(
+#            dict(params=self.field.pos_encoding.parameters(), lr=lr)
+#        )
+        params_list.append(dict(params=self.field.mlp_delta.parameters(), lr=lr*feature_lr_scale))
         params_list.append(dict(params=self.field.mlp_base.parameters(), lr=lr))
         params_list.append(dict(params=self.field.mlp_head.parameters(), lr=lr))
 

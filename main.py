@@ -35,8 +35,8 @@ def main(
         pin_memory_device='cuda',
         prefetch_factor=2,
     )
-    test_dataset = RayDataset(split='train')
-    test_dataset.training = False
+    test_dataset = RayDataset(split='test')
+    # test_dataset.training = False
     test_loader = DataLoader(
         test_dataset,
         batch_size=None,

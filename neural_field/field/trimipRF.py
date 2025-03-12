@@ -30,7 +30,7 @@ class TriMipRF(nn.Module):
         self.density_activation = density_activation
 
 
-        # self.encoding = TriMipEncoding(n_levels, plane_size, feature_dim)
+        self.encoding = TriMipEncoding(n_levels, plane_size, feature_dim)
         self.direction_encoding = tcnn.Encoding(
             n_input_dims=3,
             encoding_config={
@@ -62,8 +62,8 @@ class TriMipRF(nn.Module):
         )
 
         self.mlp_delta = tcnn.Network(
-            # n_input_dims=self.encoding.dim_out+self.time_encoding.n_output_dims,
-            n_input_dims=self.pos_encoding.n_output_dims+self.time_encoding.n_output_dims,
+            n_input_dims=self.encoding.dim_out+self.time_encoding.n_output_dims,
+            # n_input_dims=self.pos_encoding.n_output_dims+self.time_encoding.n_output_dims,
             n_output_dims=3,
             network_config={
                 "otype": "FullyFusedMLP",
@@ -75,8 +75,8 @@ class TriMipRF(nn.Module):
         )
 
         self.mlp_base = tcnn.Network(
-            # n_input_dims=self.encoding.dim_out,
-            n_input_dims=self.pos_encoding.n_output_dims,
+            n_input_dims=self.encoding.dim_out,
+            # n_input_dims=self.pos_encoding.n_output_dims,
             n_output_dims=geo_feat_dim + 1,
             network_config={
                 "otype": "FullyFusedMLP",
@@ -105,11 +105,11 @@ class TriMipRF(nn.Module):
             level_vol if level_vol is None else level_vol + self.log2_plane_size
         )
         selector = ((x > 0.0) & (x < 1.0)).all(dim=-1)
-#        enc = self.encoding(
-#            x.view(-1, 3),
-#            level=level.view(-1, 1),
-#        )
-        enc = self.pos_encoding(x.view(-1, 3))
+        enc = self.encoding(
+            x.view(-1, 3),
+            level=level.view(-1, 1),
+        )
+        # enc = self.pos_encoding(x.view(-1, 3))
         x = (
             self.mlp_base(enc)
             .view(list(x.shape[:-1]) + [1 + self.geo_feat_dim])
@@ -151,11 +151,11 @@ class TriMipRF(nn.Module):
             )
 
             with torch.no_grad():
-#                enc_x = self.encoding(
-#                    x.view(-1, 3),
-#                    level=level.view(-1, 1),
-#                )
-                enc_x = self.pos_encoding(x.view(-1, 3))
+                enc_x = self.encoding(
+                    x.view(-1, 3),
+                    level=level.view(-1, 1),
+                )
+                # enc_x = self.pos_encoding(x.view(-1, 3))
                 enc_t = self.time_encoding(t.view(-1, 1))
 
             enc = torch.concat([enc_x, enc_t], axis=-1)
@@ -167,8 +167,10 @@ class TriMipRF(nn.Module):
 
         # print(delta)
         delta *= t.view(-1, 1) > 0
-        delta *= 1e-6
-        delta *= delta > 1/1000
+        delta *= 1e-4
+        delta_size = delta.pow(2).sum(-1, keepdim=True).sqrt()
+        delta *= delta_size < 3**(1/2)
+        delta *= delta_size > 1/1024
         # delta = torch.nan_to_num(delta, nan=0)
         delta = delta * selector[..., None]
         
